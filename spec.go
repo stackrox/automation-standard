@@ -39,15 +39,16 @@ func (spec Spec) Resolve(config Config) (string, error) {
 	}
 }
 
-func joinSpecs(first, second []Spec) ([]Spec, error) {
-	names := make(map[string]struct{}, len(first)+len(second))
-	result := make([]Spec, 0, len(first)+len(second))
-	for _, spec := range first {
+func combineWithStandardSpecs(specs []Spec) ([]Spec, error) {
+	names := make(map[string]struct{}, len(standardSpecs)+len(specs))
+	result := make([]Spec, 0, len(standardSpecs)+len(specs))
+
+	for _, spec := range standardSpecs {
 		names[spec.Name] = struct{}{}
 		result = append(result, spec)
 	}
 
-	for _, spec := range second {
+	for _, spec := range specs {
 		if _, found := names[spec.Name]; found {
 			return nil, fmt.Errorf("duplicate spec name %q", spec.Name)
 		}

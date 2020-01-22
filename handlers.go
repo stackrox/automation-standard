@@ -13,9 +13,9 @@ import (
 )
 
 var (
-	errorActionUnknown      = errors.New("action unknown")
-	errorIncorrectArguments = errors.New("incorrect arguments")
-	errorValidationFailed   = errors.New("validation failed")
+	errActionUnknown      = errors.New("action unknown")
+	errIncorrectArguments = errors.New("incorrect arguments")
+	errValidationFailed   = errors.New("validation failed")
 
 	standardSpecs = []Spec{ // nolint:gochecknoglobals
 		{
@@ -63,7 +63,7 @@ func Run(app Application) {
 
 func handle(app Application) error {
 	if len(os.Args) != 2 {
-		return errorIncorrectArguments
+		return errIncorrectArguments
 	}
 
 	switch os.Args[1] {
@@ -86,7 +86,7 @@ func handle(app Application) error {
 		return handleVersion(app)
 
 	default:
-		return errorActionUnknown
+		return errActionUnknown
 	}
 }
 
@@ -104,7 +104,7 @@ func handleCheck(inputs []Spec) error {
 		return err
 	}
 
-	specs, err := joinSpecs(standardSpecs, inputs)
+	specs, err := combineWithStandardSpecs(inputs)
 	if err != nil {
 		return err
 	}
@@ -137,12 +137,12 @@ func handleAction(action ActionConfiguration) error {
 }
 
 func handleManifest(app Application) error {
-	combinedCreateSpecs, err := joinSpecs(standardSpecs, app.Create.Inputs)
+	combinedCreateSpecs, err := combineWithStandardSpecs(app.Create.Inputs)
 	if err != nil {
 		return err
 	}
 
-	combinedDestroySpecs, err := joinSpecs(standardSpecs, app.Destroy.Inputs)
+	combinedDestroySpecs, err := combineWithStandardSpecs(app.Destroy.Inputs)
 	if err != nil {
 		return err
 	}
@@ -181,7 +181,7 @@ func handleVersion(app Application) error {
 }
 
 func resolveSpecs(cfg Config, inputs []Spec) (map[string]string, error) {
-	specs, err := joinSpecs(standardSpecs, inputs)
+	specs, err := combineWithStandardSpecs(inputs)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +213,7 @@ func Validate(specs []Spec, cfg Config) error {
 	results := validateSpecs(specs, cfg)
 	for _, result := range results {
 		if result.err != nil {
-			return errorValidationFailed
+			return errValidationFailed
 		}
 	}
 
@@ -222,13 +222,10 @@ func Validate(specs []Spec, cfg Config) error {
 
 func ValidatePretty(specs []Spec, cfg Config) error {
 	results := validateSpecs(specs, cfg)
-	//names := make([]Spec, 0, len(specErrors))
-	//for spec := range specErrors {
-	//	names = append(names, spec)
-	//}
 	sort.Slice(results, func(i, j int) bool {
 		return results[i].name < results[j].name
 	})
+
 	var errorsEncountered bool
 	for _, result := range results {
 		if result.err != nil {
@@ -240,7 +237,7 @@ func ValidatePretty(specs []Spec, cfg Config) error {
 		}
 	}
 	if errorsEncountered {
-		return errorValidationFailed
+		return errValidationFailed
 	}
 	return nil
 }
