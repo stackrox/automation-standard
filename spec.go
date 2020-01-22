@@ -82,7 +82,7 @@ func validateSpecs(specs []Spec, config Config) []result {
 		if _, found := paramNames[name]; !found {
 			results = append(results, result{
 				name:    name,
-				message: fmt.Sprintf("%s", name),
+				message: name,
 				err:     fmt.Errorf("the parameter %q did not have a matching spec", name),
 			})
 		}

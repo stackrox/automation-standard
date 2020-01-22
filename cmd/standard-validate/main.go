@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/stackrox/automation-standard"
+	standard "github.com/stackrox/automation-standard"
 )
 
 var version = "development"

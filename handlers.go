@@ -13,12 +13,11 @@ import (
 )
 
 var (
-	errorActionNotImplemented = errors.New("action not implemented")
-	errorActionUnknown        = errors.New("action unknown")
-	errorIncorrectArguments   = errors.New("incorrect arguments")
-	errorValidationFailed     = errors.New("validation failed")
+	errorActionUnknown      = errors.New("action unknown")
+	errorIncorrectArguments = errors.New("incorrect arguments")
+	errorValidationFailed   = errors.New("validation failed")
 
-	standardSpecs = []Spec{
+	standardSpecs = []Spec{ // nolint:gochecknoglobals
 		{
 			Name:        "description",
 			Description: "The description of this run",
