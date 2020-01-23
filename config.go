@@ -1,9 +1,8 @@
 package standard
 
 import (
+	"encoding/json"
 	"io/ioutil"
-
-	"gopkg.in/yaml.v2"
 )
 
 type Config map[string]string
@@ -15,7 +14,7 @@ func LoadConfig(filename string) (Config, error) {
 	}
 
 	var cfg Config
-	if err := yaml.UnmarshalStrict(data, &cfg); err != nil {
+	if err := json.Unmarshal(data, &cfg); err != nil {
 		return Config{}, err
 	}
 

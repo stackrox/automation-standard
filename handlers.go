@@ -2,6 +2,7 @@ package standard
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -9,7 +10,6 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -51,7 +51,7 @@ var (
 	}
 )
 
-const configFilename = "config.yaml"
+const configFilename = "config.json"
 
 func Run(app Application) {
 	if err := handle(app); err != nil {
@@ -166,12 +166,12 @@ func handleManifest(app Application) error {
 		Version: "v1.0",
 	}
 
-	data, err := yaml.Marshal(manifest)
+	data, err := json.MarshalIndent(manifest, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("%s", string(data))
+	fmt.Println(string(data))
 	return nil
 }
 

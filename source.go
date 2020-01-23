@@ -1,6 +1,11 @@
 package standard
 
-import "errors"
+import (
+	"encoding/json"
+	"errors"
+)
+
+var errorUnknownSource = errors.New("unknown source")
 
 type source int
 
@@ -10,33 +15,31 @@ const (
 	Parameter
 )
 
-var errorUnknownSource = errors.New("unknown source")
+var (
+	_ json.Marshaler   = (*source)(nil)
+	_ json.Unmarshaler = (*source)(nil)
+)
 
-func (src source) MarshalYAML() (interface{}, error) {
+func (src source) MarshalJSON() ([]byte, error) {
 	switch src {
 	case Environment:
-		return "ENVIRONMENT_VARIABLE", nil
+		return []byte(`"ENVIRONMENT_VARIABLE"`), nil
 	case File:
-		return "FILE", nil
+		return []byte(`"FILE"`), nil
 	case Parameter:
-		return "CONFIGURATION_PARAMETER", nil
+		return []byte(`"CONFIGURATION_PARAMETER"`), nil
 	default:
 		return nil, errorUnknownSource
 	}
 }
 
-func (src *source) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var literal string
-	if err := unmarshal(&literal); err != nil {
-		return err
-	}
-
-	switch literal {
-	case "ENVIRONMENT_VARIABLE":
+func (src *source) UnmarshalJSON(data []byte) error {
+	switch string(data) {
+	case `"ENVIRONMENT_VARIABLE"`:
 		*src = Environment
-	case "FILE":
+	case `"FILE"`:
 		*src = File
-	case "CONFIGURATION_PARAMETER":
+	case `"CONFIGURATION_PARAMETER"`:
 		*src = Parameter
 	default:
 		return errorUnknownSource

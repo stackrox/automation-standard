@@ -1,27 +1,26 @@
 package standard
 
 import (
+	"encoding/json"
 	"io/ioutil"
-
-	"gopkg.in/yaml.v2"
 )
 
 type Manifest struct {
-	Create   ActionManifest `yaml:"create"`
-	Destroy  ActionManifest `yaml:"destroy"`
-	Metadata Metadata       `yaml:"metadata"`
-	Version  string         `yaml:"version"`
+	Create   ActionManifest `json:"create"`
+	Destroy  ActionManifest `json:"destroy"`
+	Metadata Metadata       `json:"metadata"`
+	Version  string         `json:"version"`
 }
 
 type ActionManifest struct {
-	Inputs []Spec `yaml:"inputs"`
+	Inputs []Spec `json:"inputs"`
 }
 
 type Metadata struct {
-	Name        string `yaml:"name"`
-	Description string `yaml:"description"`
-	Version     string `yaml:"version"`
-	Homepage    string `yaml:"homepage"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Version     string `json:"version"`
+	Homepage    string `json:"homepage"`
 }
 
 func LoadManifest(filename string) (Manifest, error) {
@@ -31,8 +30,8 @@ func LoadManifest(filename string) (Manifest, error) {
 	}
 
 	var manifest Manifest
-	if err := yaml.UnmarshalStrict(data, &manifest); err != nil {
-		return Manifest{}, nil
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return Manifest{}, err
 	}
 
 	return manifest, nil
