@@ -7,192 +7,128 @@ import (
 	"fmt"
 	"os"
 	"sort"
-	"time"
 
 	"github.com/fatih/color"
+	"github.com/spf13/cobra"
 )
 
-var (
-	errActionUnknown      = errors.New("action unknown")
-	errIncorrectArguments = errors.New("incorrect arguments")
-	errValidationFailed   = errors.New("validation failed")
-
-	standardSpecs = []Spec{ // nolint:gochecknoglobals
-		{
-			Name:        "description",
-			Description: "The description of this run",
-			Source:      Parameter,
-		},
-		{
-			Name:        "id",
-			Description: "The id of this run",
-			Source:      Parameter,
-		},
-		{
-			Name:        "name",
-			Description: "The name of this run",
-			Source:      Parameter,
-		},
-		{
-			Name:        "owner",
-			Description: "Who the service launched this run on behalf of",
-			Source:      Parameter,
-		},
-		{
-			Name:        "service",
-			Description: "The service that launched this run",
-			Source:      Parameter,
-		},
-		{
-			Name:        "url",
-			Description: "Homepage to the service run",
-			Source:      Parameter,
-		},
-	}
-)
-
-const configFilename = "config.json"
-
+// Run executes and takes full control of the configured application. This
+// function never returns, and will exit with an appropriate status code
+// indicating success or failure.
 func Run(app Application) {
-	if err := handle(app); err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %v\n", app.Name, err)
-		os.Exit(1)
+	cmd := &cobra.Command{
+		SilenceUsage: true,
+		Use:          app.Name,
+		Version:      app.Version,
+		Long:         app.Description + "\n\n" + app.Homepage,
+	}
+
+	cmd.AddCommand(
+		commandCreate(app),
+		commandDestroy(app),
+		commandManifest(app),
+	)
+
+	if err := cmd.Execute(); err != nil {
+		os.Exit(1) // nolint:gomnd
 	}
 	os.Exit(0)
 }
 
-func handle(app Application) error {
-	if len(os.Args) != 2 {
-		return errIncorrectArguments
-	}
+func commandCreate(app Application) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "create",
+		Short: "Create cluster",
+		Long:  "Creates a cluster",
 
-	switch os.Args[1] {
-	case "create":
-		return handleCreate(app)
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			values, err := resolveSpecs(cmd, app.Create.Inputs)
+			if err != nil {
+				return err
+			}
 
-	case "create-check":
-		return handleCreateCheck(app)
-
-	case "destroy":
-		return handleDestroy(app)
-
-	case "destroy-check":
-		return handleDestroyCheck(app)
-
-	case "manifest":
-		return handleManifest(app)
-
-	case "version":
-		return handleVersion(app)
-
-	default:
-		return errActionUnknown
-	}
-}
-
-func handleCreateCheck(app Application) error {
-	return handleCheck(app.Create.Inputs)
-}
-
-func handleDestroyCheck(app Application) error {
-	return handleCheck(app.Destroy.Inputs)
-}
-
-func handleCheck(inputs []Spec) error {
-	cfg, err := LoadConfig(configFilename)
-	if err != nil {
-		return err
-	}
-
-	specs, err := combineWithStandardSpecs(inputs)
-	if err != nil {
-		return err
-	}
-
-	return ValidatePretty(specs, cfg)
-}
-
-func handleCreate(app Application) error {
-	return handleAction(app.Create)
-}
-
-func handleDestroy(app Application) error {
-	return handleAction(app.Destroy)
-}
-
-func handleAction(action ActionConfiguration) error {
-	cfg, err := LoadConfig(configFilename)
-	if err != nil {
-		return err
-	}
-
-	resolved, err := resolveSpecs(cfg, action.Inputs)
-	if err != nil {
-		return err
-	}
-
-	ctx, cancel := lifespanContext(action.Timeout)
-	defer cancel()
-	return action.Handler(ctx, resolved)
-}
-
-func handleManifest(app Application) error {
-	combinedCreateSpecs, err := combineWithStandardSpecs(app.Create.Inputs)
-	if err != nil {
-		return err
-	}
-
-	combinedDestroySpecs, err := combineWithStandardSpecs(app.Destroy.Inputs)
-	if err != nil {
-		return err
-	}
-
-	sortSpecs(combinedCreateSpecs)
-	sortSpecs(combinedDestroySpecs)
-
-	manifest := Manifest{
-		Create: ActionManifest{
-			Inputs: combinedCreateSpecs,
+			return app.Create.Handler(context.Background(), values)
 		},
-		Destroy: ActionManifest{
-			Inputs: combinedDestroySpecs,
-		},
-		Metadata: Metadata{
-			Name:        app.Name,
-			Description: app.Description,
-			Version:     app.Version,
-			Homepage:    app.Homepage,
-		},
-		Version: "v1.0",
 	}
 
-	data, err := json.MarshalIndent(manifest, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(string(data))
-	return nil
+	addCommandFlags(app.Create.Inputs, cmd)
+	return cmd
 }
 
-func handleVersion(app Application) error {
-	fmt.Println(app.Version)
-	return nil
-}
+func commandDestroy(app Application) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "destroy",
+		Short: "Destroy cluster",
+		Long:  "Destroys a cluster",
 
-func resolveSpecs(cfg Config, inputs []Spec) (map[string]string, error) {
-	specs, err := combineWithStandardSpecs(inputs)
-	if err != nil {
-		return nil, err
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			values, err := resolveSpecs(cmd, app.Destroy.Inputs)
+			if err != nil {
+				return err
+			}
+
+			return app.Destroy.Handler(context.Background(), values)
+		},
 	}
 
-	if err := ValidatePretty(specs, cfg); err != nil {
+	addCommandFlags(app.Destroy.Inputs, cmd)
+	return cmd
+}
+
+func commandManifest(app Application) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "manifest",
+		Short: "Flavor manifest",
+		Long:  "Print a JSON manifest",
+
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			sortSpecs(app.Create.Inputs)
+			sortSpecs(app.Destroy.Inputs)
+
+			manifest := Manifest{
+				Create:  app.Create,
+				Destroy: app.Destroy,
+				Metadata: Metadata{
+					Name:        app.Name,
+					Description: app.Description,
+					Version:     app.Version,
+					Homepage:    app.Homepage,
+				},
+				Version: "v1.0",
+			}
+
+			data, err := json.MarshalIndent(manifest, "", "  ")
+			if err != nil {
+				return err
+			}
+
+			fmt.Println(string(data))
+			return nil
+		},
+	}
+
+	return cmd
+}
+
+func addCommandFlags(specs []Parameter, cmd *cobra.Command) {
+	for _, spec := range specs {
+		if spec.Source != Flag {
+			continue
+		}
+
+		cmd.Flags().String(spec.Name, "", spec.Description)
+		cmd.MarkFlagRequired(spec.Name) // nolint:errcheck
+	}
+}
+
+func resolveSpecs(cmd *cobra.Command, specs []Parameter) (map[string]string, error) {
+	if err := validate(specs, cmd); err != nil {
 		return nil, err
 	}
 
 	resolved := make(map[string]string, len(specs))
 	for _, spec := range specs {
-		value, err := spec.Resolve(cfg)
+		value, err := spec.Resolve(cmd)
 		if err != nil {
 			return nil, err
 		}
@@ -202,26 +138,8 @@ func resolveSpecs(cfg Config, inputs []Spec) (map[string]string, error) {
 	return resolved, nil
 }
 
-func lifespanContext(lifespan time.Duration) (context.Context, context.CancelFunc) {
-	if lifespan == 0 {
-		return context.WithCancel(context.Background())
-	}
-	return context.WithTimeout(context.Background(), lifespan)
-}
-
-func Validate(specs []Spec, cfg Config) error {
-	results := validateSpecs(specs, cfg)
-	for _, result := range results {
-		if result.err != nil {
-			return errValidationFailed
-		}
-	}
-
-	return nil
-}
-
-func ValidatePretty(specs []Spec, cfg Config) error {
-	results := validateSpecs(specs, cfg)
+func validate(specs []Parameter, cmd *cobra.Command) error {
+	results := validateSpecs(specs, cmd)
 	sort.Slice(results, func(i, j int) bool {
 		return results[i].name < results[j].name
 	})
@@ -237,7 +155,7 @@ func ValidatePretty(specs []Spec, cfg Config) error {
 		}
 	}
 	if errorsEncountered {
-		return errValidationFailed
+		return errors.New("validation failed")
 	}
 	return nil
 }

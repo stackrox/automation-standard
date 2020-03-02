@@ -1,38 +1,18 @@
 package standard
 
-import (
-	"encoding/json"
-	"io/ioutil"
-)
-
+// Manifest represents a (JSON-marshalable) manifest of an application's
+// declared configuration and parameters.
 type Manifest struct {
-	Create   ActionManifest `json:"create"`
-	Destroy  ActionManifest `json:"destroy"`
-	Metadata Metadata       `json:"metadata"`
-	Version  string         `json:"version"`
+	Create   Action   `json:"create"`
+	Destroy  Action   `json:"destroy"`
+	Metadata Metadata `json:"metadata"`
+	Version  string   `json:"version"`
 }
 
-type ActionManifest struct {
-	Inputs []Spec `json:"inputs"`
-}
-
+// Metadata represents an application's metadata.
 type Metadata struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Version     string `json:"version"`
 	Homepage    string `json:"homepage"`
-}
-
-func LoadManifest(filename string) (Manifest, error) {
-	data, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return Manifest{}, err
-	}
-
-	var manifest Manifest
-	if err := json.Unmarshal(data, &manifest); err != nil {
-		return Manifest{}, err
-	}
-
-	return manifest, nil
 }

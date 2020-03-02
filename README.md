@@ -27,7 +27,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/stackrox/automation-standard"
+	standard "github.com/stackrox/automation-standard"
 )
 
 func main() {
@@ -37,8 +37,8 @@ func main() {
 		Homepage:    "https://github.com/stackrox/automation-standard",
 		Version:     "v0.0.0",
 		
-		Create: standard.ActionConfiguration{
-			Inputs: []standard.Spec{
+		Create: standard.Action{
+			Inputs: []standard.Parameter{
 				{
 					Name:        "GOOGLE_APPLICATION_CREDENTIALS",
 					Description: "Location of GCP service account credential file",
@@ -47,14 +47,14 @@ func main() {
 				{
 					Name:        "main-image",
 					Description: "Main image tag",
-					Source:      standard.Parameter,
+					Source:      standard.Flag,
 				},
 			},
 			Handler: create,
 		},
 		
-		Destroy: standard.ActionConfiguration{
-			Inputs: []standard.Spec{
+		Destroy: standard.Action{
+			Inputs: []standard.Parameter{
 				{
 					Name:        "GOOGLE_APPLICATION_CREDENTIALS",
 					Description: "Location of GCP service account credential file",

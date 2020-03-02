@@ -10,9 +10,15 @@ var errorUnknownSource = errors.New("unknown source")
 type source int
 
 const (
+	// Environment represents a parameter that exists in the current working
+	// environment.
 	Environment source = iota + 1
+
+	// File represents a parameter that exists as a file.
 	File
-	Parameter
+
+	// Flag represents a parameter that is given as a command line flag.
+	Flag
 )
 
 var (
@@ -26,8 +32,8 @@ func (src source) MarshalJSON() ([]byte, error) {
 		return []byte(`"ENVIRONMENT_VARIABLE"`), nil
 	case File:
 		return []byte(`"FILE"`), nil
-	case Parameter:
-		return []byte(`"CONFIGURATION_PARAMETER"`), nil
+	case Flag:
+		return []byte(`"FLAG"`), nil
 	default:
 		return nil, errorUnknownSource
 	}
@@ -39,8 +45,8 @@ func (src *source) UnmarshalJSON(data []byte) error {
 		*src = Environment
 	case `"FILE"`:
 		*src = File
-	case `"CONFIGURATION_PARAMETER"`:
-		*src = Parameter
+	case `"FLAG"`:
+		*src = Flag
 	default:
 		return errorUnknownSource
 	}
