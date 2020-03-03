@@ -1,0 +1,9 @@
+linters:
+  enable-all: true
+  disable:
+    - gomnd
+    - wsl
+    - gosec
+
+issues:
+  exclude-use-default: false
