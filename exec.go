@@ -38,8 +38,8 @@ func Exec(ctx context.Context, name string, arg ...string) error {
 	}()
 
 	// Wait for the process and output copying to finish.
-	err := cmd.Wait()
 	wg.Wait()
+	err := cmd.Wait()
 
 	// Return any encountered errors.
 	switch {
