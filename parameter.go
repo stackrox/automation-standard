@@ -23,34 +23,45 @@ type Parameter struct {
 	// Source is how this parameter is configured, as a flag, environment
 	// variable, or file.
 	Source source `json:"source"`
+
+	// Constraints is a list of constraints used vor validating parameter
+	// values.
+	Constraints []Constraint `json:"constraints,omitempty"`
 }
 
 // Resolve obtains the value of the given parameter from the appropriate source.
 func (spec Parameter) Resolve(cmd *cobra.Command) (string, error) {
+	var resolved string
 	switch spec.Source {
 	case Flag:
 		value, err := cmd.Flags().GetString(spec.Name)
 		if err != nil {
 			return "", fmt.Errorf("the parameter %q was not found", spec.Name)
 		}
-		return value, nil
+		resolved = value
 
 	case Environment:
 		value, found := os.LookupEnv(spec.Name)
 		if !found {
 			return "", fmt.Errorf("the environment variable %q was not found", spec.Name)
 		}
-		return value, nil
+		resolved = value
 
 	case File:
 		if _, err := os.Stat(spec.Name); err != nil {
 			return "", fmt.Errorf("the file %q was not found", spec.Name)
 		}
-		return spec.Name, nil
+		resolved = spec.Name
 
 	default:
 		return "", errorUnknownSource
 	}
+
+	if err := CheckAll(spec.Constraints, resolved); err != nil {
+		return "", err
+	}
+
+	return resolved, nil
 }
 
 type result struct {
