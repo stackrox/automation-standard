@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"sort"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -42,7 +41,7 @@ func commandCreate(app Application) *cobra.Command {
 		Long:  "Creates a cluster",
 
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			values, err := resolveSpecs(cmd, app.Create.Inputs)
+			values, err := resolveSpecsAndReportErrors(cmd, app.Create.Inputs)
 			if err != nil {
 				return err
 			}
@@ -62,7 +61,7 @@ func commandDestroy(app Application) *cobra.Command {
 		Long:  "Destroys a cluster",
 
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			values, err := resolveSpecs(cmd, app.Destroy.Inputs)
+			values, err := resolveSpecsAndReportErrors(cmd, app.Destroy.Inputs)
 			if err != nil {
 				return err
 			}
@@ -121,41 +120,30 @@ func addCommandFlags(specs []Parameter, cmd *cobra.Command) {
 	}
 }
 
-func resolveSpecs(cmd *cobra.Command, specs []Parameter) (map[string]string, error) {
-	if err := validate(specs, cmd); err != nil {
-		return nil, err
-	}
-
-	resolved := make(map[string]string, len(specs))
-	for _, spec := range specs {
-		value, err := spec.Resolve(cmd)
-		if err != nil {
-			return nil, err
-		}
-		resolved[spec.Name] = value
-	}
-
-	return resolved, nil
-}
-
-func validate(specs []Parameter, cmd *cobra.Command) error {
-	results := validateSpecs(specs, cmd)
-	sort.Slice(results, func(i, j int) bool {
-		return results[i].name < results[j].name
-	})
-
+func resolveSpecsAndReportErrors(cmd *cobra.Command, specs []Parameter) (map[string]string, error) {
+	resolvedValues := make(map[string]string)
 	var errorsEncountered bool
-	for _, result := range results {
-		if result.err != nil {
+
+	sortSpecs(specs)
+	for _, spec := range specs {
+		// Resolve this single spec.
+		if value, errs := spec.Resolve(cmd); len(errs) != 0 {
+			// Report all of the errors.
 			errorsEncountered = true
-			color.Red("[FAIL] %s", result.message)
-			color.Red("       ↳ %v", result.err)
+			color.Red("[FAIL] %s (%s)", spec.Name, spec.Description)
+			for _, err := range errs {
+				color.Red("       ↳ %v", err)
+			}
 		} else {
-			color.Green("[PASS] %s", result.message)
+			// No errors to report.
+			resolvedValues[spec.Name] = value
+			color.Green("[PASS] %s (%s)", spec.Name, spec.Description)
 		}
 	}
+
 	if errorsEncountered {
-		return errors.New("validation failed")
+		return nil, errors.New("validation failed")
 	}
-	return nil
+
+	return resolvedValues, nil
 }
