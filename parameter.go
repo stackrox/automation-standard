@@ -30,81 +30,38 @@ type Parameter struct {
 }
 
 // Resolve obtains the value of the given parameter from the appropriate source.
-func (spec Parameter) Resolve(cmd *cobra.Command) (string, error) {
+func (spec Parameter) Resolve(cmd *cobra.Command) (string, []error) {
 	var resolved string
 	switch spec.Source {
 	case Flag:
 		value, err := cmd.Flags().GetString(spec.Name)
 		if err != nil {
-			return "", fmt.Errorf("the parameter %q was not found", spec.Name)
+			return "", []error{fmt.Errorf("the parameter %q was not found", spec.Name)}
 		}
 		resolved = value
 
 	case Environment:
 		value, found := os.LookupEnv(spec.Name)
 		if !found {
-			return "", fmt.Errorf("the environment variable %q was not found", spec.Name)
+			return "", []error{fmt.Errorf("the environment variable %q was not found", spec.Name)}
 		}
 		resolved = value
 
 	case File:
 		if _, err := os.Stat(spec.Name); err != nil {
-			return "", fmt.Errorf("the file %q was not found", spec.Name)
+			return "", []error{fmt.Errorf("the file %q was not found", spec.Name)}
 		}
 		resolved = spec.Name
 
 	default:
-		return "", errorUnknownSource
+		return "", []error{errorUnknownSource}
 	}
 
-	if err := CheckAll(spec.Constraints, resolved); err != nil {
-		return "", err
+	if errs := checkAll(spec.Constraints, resolved); len(errs) != 0 {
+		return "", errs
 	}
 
 	return resolved, nil
-}
-
-type result struct {
-	name    string
-	message string
-	err     error
-}
-
-func validateSpecs(specs []Parameter, cmd *cobra.Command) []result {
-	results := make([]result, 0, len(specs))
-	paramNames := make(map[string]struct{})
-
-	// Filter a set of spec names, where the source is of the parameter type.
-	for _, spec := range specs {
-		if spec.Source != Flag {
-			continue
-		}
-		paramNames[spec.Name] = struct{}{}
-	}
-
-	// Examine the given config file, and verify that all of the parameters
-	// have a matching spec. This avoids having extraneous values in the config file.
-	//for name := range config {
-	//	if _, found := paramNames[name]; !found {
-	//		results = append(results, result{
-	//			name:    name,
-	//			message: name,
-	//			err:     fmt.Errorf("the parameter %q did not have a matching spec", name),
-	//		})
-	//	}
-	//}
-
-	// Resolve each spec, and report an error if the file/env/parameter doesn't exist.
-	for _, spec := range specs {
-		_, err := spec.Resolve(cmd)
-		results = append(results, result{
-			name:    spec.Name,
-			message: fmt.Sprintf("%s (%s)", spec.Name, spec.Description),
-			err:     err,
-		})
-	}
-
-	return results
 }
 
 func sortSpecs(specs []Parameter) {

@@ -14,6 +14,8 @@ type Constraint struct {
 	Description string `json:"description"`
 }
 
+const regexDockerImage = `^[a-z0-9-]+(\.[a-z0-9-]+)+/[a-z0-9_.-]+(/[a-z0-9_.-]+)*:[a-z0-9_.-]{1,128}$`
+
 var (
 	constraintNamePass        = "pass"
 	constraintNameFail        = "fail"
@@ -66,7 +68,7 @@ var (
 		constraintNameDockerImage: {
 			description: "ensure value is a docker image name",
 			fn: func(_ string, given string) error {
-				if matched, _ := regexp.MatchString(`^[a-z0-9-]+(\.[a-z0-9-]+)+/[a-z0-9_.-]+(/[a-z0-9_.-]+)*:[a-z0-9_.-]{1,128}$`, given); !matched {
+				if matched, _ := regexp.MatchString(regexDockerImage, given); !matched {
 					return fmt.Errorf("input %s was not a docker image", given)
 				}
 				return nil
@@ -87,18 +89,27 @@ func ConstraintByName(name string, value string) (Constraint, error) {
 	return Constraint{}, fmt.Errorf("unknown constraint %q", name)
 }
 
+func mustConstraintByName(name string, value string) Constraint {
+	constraint, err := ConstraintByName(name, value)
+	if err != nil {
+		panic(errors.Wrapf(err, "failed to lookup built-in constraint"))
+	}
+
+	return constraint
+}
+
 func ConstraintIntMinimum(minumum int) Constraint {
-	c, _ := ConstraintByName(constraintNameIntMinimum, fmt.Sprint(minumum))
+	c := mustConstraintByName(constraintNameIntMinimum, fmt.Sprint(minumum))
 	return c
 }
 
 func ConstraintIntMaximum(maximum int) Constraint {
-	c, _ := ConstraintByName(constraintNameIntMaximum, fmt.Sprint(maximum))
+	c := mustConstraintByName(constraintNameIntMaximum, fmt.Sprint(maximum))
 	return c
 }
 
 func ConstraintDockerImage() Constraint {
-	c, _ := ConstraintByName(constraintNameDockerImage, "")
+	c := mustConstraintByName(constraintNameDockerImage, "")
 	return c
 }
 
@@ -110,14 +121,15 @@ func (c Constraint) Check(given string) error {
 	return fmt.Errorf("unknown constraint %q", c.Name)
 }
 
-func CheckAll(cs []Constraint, given string) error {
+func checkAll(cs []Constraint, given string) []error {
+	var errs []error
 	for _, c := range cs {
 		if err := c.Check(given); err != nil {
-			return err
+			errs = append(errs, err)
 		}
 	}
 
-	return nil
+	return errs
 }
 
 func asInts(value string, given string) (int, int, error) {
