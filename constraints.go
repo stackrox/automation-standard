@@ -8,37 +8,26 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Constraint represents a restriction that can be placed on a parameter.
 type Constraint struct {
 	Name        string `json:"name"`
 	Value       string `json:"value,omitempty"`
 	Description string `json:"description"`
 }
 
-const regexDockerImage = `^[a-z0-9-]+(\.[a-z0-9-]+)+/[a-z0-9_.-]+(/[a-z0-9_.-]+)*:[a-z0-9_.-]{1,128}$`
-
-var (
-	constraintNamePass        = "pass"
-	constraintNameFail        = "fail"
+const (
 	constraintNameIntMinimum  = "int-minimum"
 	constraintNameIntMaximum  = "int-maximum"
 	constraintNameDockerImage = "docker-image"
 
-	constraintFuncs = map[string]struct {
+	regexDockerImage = `^[a-z0-9-]+(\.[a-z0-9-]+)+/[a-z0-9_.-]+(/[a-z0-9_.-]+)*:[a-z0-9_.-]{1,128}$`
+)
+
+var (
+	constraintFuncs = map[string]struct { // nolint:gochecknoglobals
 		description string
 		fn          func(value string, given string) error
 	}{
-		constraintNamePass: {
-			description: "always passes",
-			fn: func(string, string) error {
-				return nil
-			},
-		},
-		constraintNameFail: {
-			description: "always fails",
-			fn: func(string, string) error {
-				return fmt.Errorf("failed")
-			},
-		},
 		constraintNameIntMinimum: {
 			description: "ensure value minimum",
 			fn: func(value string, given string) error {
@@ -77,6 +66,8 @@ var (
 	}
 )
 
+// ConstraintByName returns the named constraint if it exists, and an error
+// otherwise.
 func ConstraintByName(name string, value string) (Constraint, error) {
 	if pair, found := constraintFuncs[name]; found {
 		return Constraint{
@@ -89,6 +80,8 @@ func ConstraintByName(name string, value string) (Constraint, error) {
 	return Constraint{}, fmt.Errorf("unknown constraint %q", name)
 }
 
+// mustConstraintByName returns the named constraint if it exists, and panics
+// otherwise. A panic indicates a bug in this library.
 func mustConstraintByName(name string, value string) Constraint {
 	constraint, err := ConstraintByName(name, value)
 	if err != nil {
@@ -98,21 +91,28 @@ func mustConstraintByName(name string, value string) Constraint {
 	return constraint
 }
 
-func ConstraintIntMinimum(minumum int) Constraint {
-	c := mustConstraintByName(constraintNameIntMinimum, fmt.Sprint(minumum))
+// ConstraintIntMinimum creates a constraint for ensuring a parameter has a
+// minimum integer value.
+func ConstraintIntMinimum(minimum int) Constraint {
+	c := mustConstraintByName(constraintNameIntMinimum, fmt.Sprint(minimum))
 	return c
 }
 
+// ConstraintIntMaximum creates a constraint for ensuring a parameter has a
+// maximum integer value.
 func ConstraintIntMaximum(maximum int) Constraint {
 	c := mustConstraintByName(constraintNameIntMaximum, fmt.Sprint(maximum))
 	return c
 }
 
+// ConstraintDockerImage creates a constraint for ensuring a parameter is a
+// valid Docker image name.
 func ConstraintDockerImage() Constraint {
 	c := mustConstraintByName(constraintNameDockerImage, "")
 	return c
 }
 
+// Check validates that the given value conforms to this constraint.
 func (c Constraint) Check(given string) error {
 	if pair, found := constraintFuncs[c.Name]; found {
 		return errors.Wrapf(pair.fn(c.Value, given), c.Name)
@@ -121,6 +121,7 @@ func (c Constraint) Check(given string) error {
 	return fmt.Errorf("unknown constraint %q", c.Name)
 }
 
+// checkAll validates that the given value conforms to all given constraints.
 func checkAll(cs []Constraint, given string) []error {
 	var errs []error
 	for _, c := range cs {

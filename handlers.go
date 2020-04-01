@@ -134,12 +134,10 @@ func resolveSpecsAndReportErrors(cmd *cobra.Command, specs []Parameter) (map[str
 			for _, err := range errs {
 				color.Red("       ↳ %v", err)
 			}
-
 		} else {
 			// No errors to report.
 			resolvedValues[spec.Name] = value
 			color.Green("[PASS] %s (%s)", spec.Name, spec.Description)
-
 		}
 	}
 
