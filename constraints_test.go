@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test(t *testing.T) {
+func TestConstraints(t *testing.T) {
 	tests := []struct {
 		constraint Constraint
 		given      string

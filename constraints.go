@@ -159,13 +159,15 @@ func ConstraintDockerImage() Constraint {
 	return c
 }
 
-// ConstraintBool creates a constraint for ensuring a parameter is a
-// valid boolean (true or false).
+// ConstraintBool creates a constraint for ensuring a parameter is a valid
+// boolean (true or false).
 func ConstraintBool() Constraint {
 	c := mustConstraintByName(constraintNameBool, "")
 	return c
 }
 
+// ConstraintEnum creates a constraint for ensuring a parameter is one of a
+// number of possible values.
 func ConstraintEnum(values ...string) Constraint {
 	value := strings.Join(values, ",")
 	c := mustConstraintByName(constraintNameEnum, value)
