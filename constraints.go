@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -19,6 +20,8 @@ const (
 	constraintNameIntMinimum  = "int-minimum"
 	constraintNameIntMaximum  = "int-maximum"
 	constraintNameDockerImage = "docker-image"
+	constraintNameBool        = "bool"
+	constraintNameEnum        = "enum"
 
 	regexDockerImage = `^[a-z0-9-]+(\.[a-z0-9-]+)+/[a-z0-9_.-]+(/[a-z0-9_.-]+)*:[a-z0-9_.-]{1,128}$`
 )
@@ -61,6 +64,50 @@ var (
 					return fmt.Errorf("input %s was not a docker image", given)
 				}
 				return nil
+			},
+		},
+		constraintNameBool: {
+			description: "ensure value is a boolean",
+			fn: func(_ string, given string) error {
+				switch given {
+				case "true", "false":
+					return nil
+				default:
+					return fmt.Errorf("input %s was not 'true' or 'false", given)
+				}
+			},
+		},
+		constraintNameEnum: {
+			description: "ensure value is one of a number of possible values",
+			fn: func(value string, given string) error {
+				items := strings.Split(value, ",")
+				message := ""
+
+				// Sanity check that there are at least 2 values. 0 values
+				// declares nothing, and 1 value should just be a constant.
+				if len(items) < 2 {
+					return fmt.Errorf("constraint value did not include at least 2 items")
+				}
+
+				// Check if the given value matches any of the allowed values.
+				// Also, build our error message while we're at it.
+				for index, item := range items {
+					switch index {
+					case 0:
+						message += fmt.Sprintf(" '%s'", item)
+					case len(items) - 1:
+						message += fmt.Sprintf(" or '%s'", item)
+					default:
+						message += fmt.Sprintf(", '%s'", item)
+					}
+
+					if item == given {
+						return nil
+					}
+				}
+
+				// Given value was not found in the set of allowed values.
+				return fmt.Errorf("input %s was not%s", given, message)
 			},
 		},
 	}
@@ -109,6 +156,21 @@ func ConstraintIntMaximum(maximum int) Constraint {
 // valid Docker image name.
 func ConstraintDockerImage() Constraint {
 	c := mustConstraintByName(constraintNameDockerImage, "")
+	return c
+}
+
+// ConstraintBool creates a constraint for ensuring a parameter is a valid
+// boolean (true or false).
+func ConstraintBool() Constraint {
+	c := mustConstraintByName(constraintNameBool, "")
+	return c
+}
+
+// ConstraintEnum creates a constraint for ensuring a parameter is one of a
+// number of possible values.
+func ConstraintEnum(values ...string) Constraint {
+	value := strings.Join(values, ",")
+	c := mustConstraintByName(constraintNameEnum, value)
 	return c
 }
 
