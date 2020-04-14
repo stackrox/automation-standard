@@ -48,4 +48,4 @@ type Action struct {
 }
 
 // Handler represents the body of a runnable action.
-type Handler func(context.Context, map[string]string) error
+type Handler func(context.Context, Values) error

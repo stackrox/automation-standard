@@ -46,7 +46,7 @@ func commandCreate(app Application) *cobra.Command {
 				return err
 			}
 
-			return app.Create.Handler(context.Background(), values)
+			return app.Create.Handler(context.Background(), Values{values})
 		},
 	}
 
@@ -66,7 +66,7 @@ func commandDestroy(app Application) *cobra.Command {
 				return err
 			}
 
-			return app.Destroy.Handler(context.Background(), values)
+			return app.Destroy.Handler(context.Background(), Values{values})
 		},
 	}
 
