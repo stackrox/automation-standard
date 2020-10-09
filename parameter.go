@@ -24,9 +24,12 @@ type Parameter struct {
 	// variable, or file.
 	Source source `json:"source"`
 
-	// Constraints is a list of constraints used vor validating parameter
+	// Constraints is a list of constraints used for validating parameter
 	// values.
 	Constraints []Constraint `json:"constraints,omitempty"`
+
+	// Is this parameter optional
+	Optional bool `default:"false" json:"optional,omitempty"`
 }
 
 // Resolve obtains the value of the given parameter from the appropriate source.
@@ -58,7 +61,7 @@ func (spec Parameter) Resolve(cmd *cobra.Command) (string, []error) {
 	}
 
 	if errs := checkAll(spec.Constraints, resolved); len(errs) != 0 {
-		return "", errs
+		return resolved, errs
 	}
 
 	return resolved, nil
