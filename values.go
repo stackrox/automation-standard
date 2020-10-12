@@ -8,7 +8,7 @@ type Values struct {
 	values map[string]string
 }
 
-// Get returns the named parameter value, or panics of that parameter does not
+// Get returns the named parameter value, or panics if that parameter does not
 // exist. This is intended to guard against silent bugs where a non-existent
 // parameter is referenced, and an empty string is consumed.
 func (g Values) Get(name string) string {

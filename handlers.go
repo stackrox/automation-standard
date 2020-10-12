@@ -116,7 +116,9 @@ func addCommandFlags(specs []Parameter, cmd *cobra.Command) {
 		}
 
 		cmd.Flags().String(spec.Name, "", spec.Description)
-		cmd.MarkFlagRequired(spec.Name) // nolint:errcheck
+		if !spec.Optional {
+			cmd.MarkFlagRequired(spec.Name) // nolint:errcheck
+		}
 	}
 }
 
@@ -127,7 +129,7 @@ func resolveSpecsAndReportErrors(cmd *cobra.Command, specs []Parameter) (map[str
 	sortSpecs(specs)
 	for _, spec := range specs {
 		// Resolve this single spec.
-		if value, errs := spec.Resolve(cmd); len(errs) != 0 {
+		if value, errs := spec.Resolve(cmd); len(errs) != 0 && (!spec.Optional || value != "") {
 			// Report all of the errors.
 			errorsEncountered = true
 			color.Red("[FAIL] %s (%s)", spec.Name, spec.Description)
